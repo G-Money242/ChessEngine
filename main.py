@@ -1,11 +1,11 @@
 import tkinter
 from PIL import Image, ImageTk
-import bitstring
+from bitstring import BitArray
 from textwrap import wrap
 
 class Board:
-    def __init__(self, side=0):
-        self.side = side # 0 for white, 1 for black
+    def __init__(self, fen=None):
+        self.fen = fen if fen else 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
         self.square_size = 60
         self.make_pieces()
         self.castling = 'KQkq'
@@ -16,34 +16,88 @@ class Board:
         self.make_bitboards()
 
     def make_bitboards(self): # Setup bitboards
+        self.wpawn = BitArray('0x0000000000000000')
+        self.bpawn = BitArray('0x0000000000000000')
+
+        self.wrook = BitArray('0x0000000000000000')
+        self.brook = BitArray('0x0000000000000000')
         
-        self.wpawn = bitstring.BitArray('0x000000000000FF00')
-        self.bpawn = bitstring.BitArray('0x00FF000000000000')
+        self.wknight = BitArray('0x0000000000000000')
+        self.bknight = BitArray('0x0000000000000000')
 
-        self.wrook = bitstring.BitArray('0x0000000000000081')
-        self.brook = bitstring.BitArray('0x8100000000000000')
+        self.wbishop = BitArray('0x0000000000000000')
+        self.bbishop = BitArray('0x0000000000000000')
+
+        self.wqueen = BitArray('0x0000000000000000')
+        self.bqueen = BitArray('0x0000000000000000')
+
+        self.wking = BitArray('0x0000000000000000')
+        self.bking = BitArray('0x0000000000000000')
+
+        self.all_pieces = BitArray('0x0000000000000000')
+
+        setup = self.fen.split(' ')[0]
+        ranks = setup.split('/')
         
-        self.wknight = bitstring.BitArray('0x0000000000000042')
-        self.bknight = bitstring.BitArray('0x4200000000000000')
+        for i,rank in enumerate(ranks):
+            j = 0
+            for char in rank:
+                if char.isdigit():
+                    j += int(char)
+                else:
+                    if char == 'r':
+                        self.brook[8*i+j] = 1
+                    elif char == 'n':
+                        self.bknight[8*i+j] = 1
+                    elif char == 'b':
+                        self.bbishop[8*i+j] = 1
+                    elif char == 'q':
+                        self.bqueen[8*i+j] = 1
+                    elif char == 'k':
+                        self.bking[8*i+j] = 1
+                    elif char == 'p':
+                        self.bpawn[8*i+j] = 1
+                    elif char == 'R':
+                        self.wrook[8*i+j] = 1
+                    elif char == 'N':
+                        self.wknight[8*i+j] = 1
+                    elif char == 'B':
+                        self.wbishop[8*i+j] = 1
+                    elif char == 'Q':
+                        self.wqueen[8*i+j] = 1
+                    elif char == 'K':
+                        self.wking[8*i+j] = 1
+                    elif char == 'P':
+                        self.wpawn[8*i+j] = 1
 
-        self.wbishop = bitstring.BitArray('0x0000000000000024')
-        self.bbishop = bitstring.BitArray('0x2400000000000000')
+                    self.all_pieces[8*i + j] = 1
+                    j += 1
+                    
+        # self.wpawn = BitArray('0x000000000000FF00')
+        # self.bpawn = BitArray('0x00FF000000000000')
 
-        self.wqueen = bitstring.BitArray('0x0000000000000010')
-        self.bqueen = bitstring.BitArray('0x1000000000000000')
+        # self.wrook = BitArray('0x0000000000000081')
+        # self.brook = BitArray('0x8100000000000000')
+        
+        # self.wknight = BitArray('0x0000000000000042')
+        # self.bknight = BitArray('0x4200000000000000')
 
-        self.wking = bitstring.BitArray('0x000000000000008')
-        self.bking = bitstring.BitArray('0x800000000000000')
+        # self.wbishop = BitArray('0x0000000000000024')
+        # self.bbishop = BitArray('0x2400000000000000')
 
-        self.all_pieces = bitstring.BitArray('0xFFFF00000000FFFF')
+        # self.wqueen = BitArray('0x0000000000000010')
+        # self.bqueen = BitArray('0x1000000000000000')
+
+        # self.wking = BitArray('0x0000000000000008')
+        # self.bking = BitArray('0x0800000000000000')
+
+        # self.all_pieces = BitArray('0xFFFF00000000FFFF')
 
         self.white = [self.wpawn, self.wrook, self.wknight, self.wbishop, self.wqueen, self.wking]
         self.black = [self.bpawn, self.brook, self.bknight, self.bbishop, self.bqueen, self.bking]
 
     def print_bitboard(self,b): # print a particular bitboard for debugging purposes
-        b_str = b.bin
-        b_str = '0' * (64 - len(b_str)) + b_str
-        print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b_str, 8)]))
+        print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin, 8)]))
 
     def make_pieces(self): #
         self.bpawn_image = tkinter.PhotoImage(file='resources/images/black_pawn.png')
@@ -69,20 +123,31 @@ class Board:
 
         for i in range(8):
             for j in range(8):
-                fill = '#696969' if (i+j) % 2 == 1 else "#ffffff"
+                fill = '#AF8A66' if (i+j) % 2 == 1 else "#EDDAB7"
 
                 canvas.create_rectangle(j*self.square_size, i*self.square_size, 
                                         (j+1)*self.square_size, (i+1)*self.square_size,
-                                        fill=fill, outline='#000000')
+                                        fill=fill, outline="")
 
         self.render_pieces(canvas)
         canvas.pack()
 
+    def render_bitboard(self, canvas, bitboard):
+        self.print_bitboard(bitboard)
+        for index,char in enumerate(bitboard.bin):
+            if char == '1':
+                true_index = 63-index
+                print(index,true_index)
+                i,j = 7-true_index//8, 7-(true_index % 8)
+                print(i,j)
+                canvas.create_rectangle(j*self.square_size, i*self.square_size, (j+1)*self.square_size, (i+1)*self.square_size, outline="#f11",fill="#f11", width=1)
+
+        canvas.pack()
+
+
     def render_pieces(self,canvas):
 
-        def render_piece(bin,image):
-            locs = bin
-            locs = '0' * (64 - len(locs)) + locs
+        def render_piece(locs,image):
             for i in range(8):
                 for j in range(8):
                     if locs[i*8 + j] == '1':
@@ -104,7 +169,7 @@ class Board:
 
         render_piece(self.wqueen.bin, self.wqueen_image)
         render_piece(self.bqueen.bin, self.bqueen_image)
-
+        
         render_piece(self.wking.bin, self.wking_image)
         render_piece(self.bking.bin, self.bking_image)
 
@@ -124,15 +189,12 @@ class Board:
                     piece[start_index] = 0
                     piece[end_index] = 1
             
-            self.white_to_move = False
+            # self.white_to_move = False
 
     def convert_spot_to_index(self,loc):
         r = int(loc[1])
         f = ord(loc[0]) - 97
         return (8-r) * 8 + f
-
-        
-
 
 
 class Error(Exception):
@@ -144,17 +206,24 @@ class IllegalMove(Error):
 def main():
     tk = tkinter.Tk()
     can = tkinter.Canvas(tk, width=800, height=800)
-    board = Board()
+    board = Board('4k3/8/8/8/4R3/8/8/4K3 w - - 0 1')
     board.render(can)
     can.pack()
-    board.make_move('e2e4')
-    board.render(can)
+    board.render_bitboard(can, board.wrook)
+
+
+    # while True:
+    #     move = input("make move:")
+    #     board.make_move(move)
+    #     board.render(can)
 
     tk.mainloop()
 
 
-b = bitstring.BitArray('0b00001101')
-print([b[i] for i in range(len(b))])
-a = bitstring.BitArray('0b0100')
-print(b.bin)
+# b = BitArray('0b1110')
+# print([b[i] for i in range(len(b))])
+# a = BitArray('0b1100')
+# c = a & b
+# print((a | b))
+# print(c.bin)
 main()
