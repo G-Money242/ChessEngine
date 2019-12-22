@@ -3,8 +3,77 @@ from PIL import Image, ImageTk
 from bitstring import BitArray
 from textwrap import wrap
 
+def print_bitboard(b): # print a particular bitboard for debugging purposes
+    print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin, 8)]))
+
+def compute_knight(knight_loc):
+    """
+    . 2 . 3 .
+    1 . . . 4
+    . . N . .
+    8 . . . 5
+    . 7 . 6 .
+
+    """
+    spot_1_clip = clear_file['a'] & clear_file['b'] & clear_rank[8]
+    spot_2_clip = clear_file['a'] & clear_rank[8] & clear_rank[7]
+    spot_3_clip = clear_file['h'] & clear_rank[8] & clear_rank[7]
+    spot_4_clip = clear_file['h'] & clear_file['g'] & clear_rank[8]
+
+    spot_5_clip = clear_file['h'] & clear_file['g'] & clear_rank[1]
+    spot_6_clip = clear_file['h'] & clear_rank[1] & clear_rank[2]
+    spot_7_clip = clear_file['a'] & clear_rank[1] & clear_rank[2]
+    spot_8_clip = clear_file['a'] & clear_file['b'] & clear_rank[1]
+
+    
+    spot_1 = (knight_loc & spot_1_clip) << 10
+    spot_2 = (knight_loc & spot_2_clip) << 17
+    spot_3 = (knight_loc & spot_3_clip) << 15
+    spot_4 = (knight_loc & spot_4_clip) << 6
+
+    spot_5 = (knight_loc & spot_5_clip) >> 10
+    spot_6 = (knight_loc & spot_6_clip) >> 17
+    spot_7 = (knight_loc & spot_7_clip) >> 15
+    spot_8 = (knight_loc & spot_8_clip) >> 6
+
+    return spot_1 | spot_2 | spot_3 | spot_4 | spot_5 | spot_6 | spot_7 | spot_8
+
+
+mask_rank = {1:BitArray('0x00000000000000FF'),
+            2:BitArray('0x000000000000FF00'),
+            3:BitArray('0x0000000000FF0000'),
+            4:BitArray('0x00000000FF000000'),
+            5:BitArray('0x000000FF00000000'),
+            6:BitArray('0x0000FF0000000000'),
+            7:BitArray('0x00FF000000000000'),
+            8:BitArray('0xFF00000000000000')}
+clear_rank = {rank:~bitboard for rank,bitboard in mask_rank.items()}
+
+mask_file={'a':BitArray('0x8080808080808080'),
+        'b':BitArray('0x4040404040404040'),
+        'c':BitArray('0x2020202020202020'),
+        'd':BitArray('0x1010101010101010'),
+        'e':BitArray('0x0808080808080808'),
+        'f':BitArray('0x0404040404040404'),
+        'g':BitArray('0x0202020202020202'),
+        'h':BitArray('0x0101010101010101')}
+
+clear_file = {f:~bitboard for f,bitboard in mask_file.items()}
+    
+p = BitArray('0x0000000000000001')
+piece = {0:p}
+for i in range(8):
+    for j in range(8):
+        if (8*i + j) not in piece: 
+            p = p << 1
+            piece[8*i+j] = p
+
+knight_moves = {i:compute_knight(knight) for i,knight in piece.items()}
+
 class Board:
-    def __init__(self, fen=None):
+    def __init__(self, fen=None,tk=None):
+        if tk == None:
+            tk = tkinter.Tk()
         self.fen = fen if fen else 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
         self.square_size = 60
         self.make_pieces()
@@ -33,8 +102,6 @@ class Board:
 
         self.wking = BitArray('0x0000000000000000')
         self.bking = BitArray('0x0000000000000000')
-
-        self.all_pieces = BitArray('0x0000000000000000')
 
         setup = self.fen.split(' ')[0]
         ranks = setup.split('/')
@@ -69,37 +136,16 @@ class Board:
                         self.wking[8*i+j] = 1
                     elif char == 'P':
                         self.wpawn[8*i+j] = 1
-
-                    self.all_pieces[8*i + j] = 1
                     j += 1
-                    
-        # self.wpawn = BitArray('0x000000000000FF00')
-        # self.bpawn = BitArray('0x00FF000000000000')
 
-        # self.wrook = BitArray('0x0000000000000081')
-        # self.brook = BitArray('0x8100000000000000')
-        
-        # self.wknight = BitArray('0x0000000000000042')
-        # self.bknight = BitArray('0x4200000000000000')
-
-        # self.wbishop = BitArray('0x0000000000000024')
-        # self.bbishop = BitArray('0x2400000000000000')
-
-        # self.wqueen = BitArray('0x0000000000000010')
-        # self.bqueen = BitArray('0x1000000000000000')
-
-        # self.wking = BitArray('0x0000000000000008')
-        # self.bking = BitArray('0x0800000000000000')
-
-        # self.all_pieces = BitArray('0xFFFF00000000FFFF')
-
-        self.white = [self.wpawn, self.wrook, self.wknight, self.wbishop, self.wqueen, self.wking]
-        self.black = [self.bpawn, self.brook, self.bknight, self.bbishop, self.bqueen, self.bking]
+        self.allwhite = self.wpawn | self.wrook | self.wknight | self.wbishop | self.wqueen | self.wking
+        self.allblack = self.bpawn | self.brook | self.bknight | self.bbishop | self.bqueen | self.bking
+        self.all_pieces = self.allwhite & self.allblack
 
     def print_bitboard(self,b): # print a particular bitboard for debugging purposes
         print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin, 8)]))
 
-    def make_pieces(self): #
+    def make_pieces(self): 
         self.bpawn_image = tkinter.PhotoImage(file='resources/images/black_pawn.png')
         self.wpawn_image = tkinter.PhotoImage(file='resources/images/white_pawn.png')
 
@@ -196,6 +242,30 @@ class Board:
         f = ord(loc[0]) - 97
         return (8-r) * 8 + f
 
+    def get_pawn_attacks(self, color):
+        pawns = self.wpawn if color == 'w' else self.bpawn
+        if color == 'w':
+            west_attack = pawns.copy()
+            west_attack.rol(9)
+            west_attack = west_attack & (clear_file['h'])
+            
+            east_attack = pawns.copy()
+            east_attack.rol(7)
+            east_attack = east_attack & (clear_file['a'])
+
+            return east_attack | west_attack
+        else:
+            west_attack = pawns.copy()
+            west_attack.ror(7)
+            west_attack = west_attack & (clear_file['h'])
+            
+            east_attack = pawns.copy()
+            east_attack.ror(9)
+            east_attack = east_attack & (clear_file['a'])
+
+            return east_attack | west_attack
+        
+
 
 class Error(Exception):
     pass
@@ -203,10 +273,11 @@ class IllegalMove(Error):
     pass
 
 
+
 def main():
     tk = tkinter.Tk()
     can = tkinter.Canvas(tk, width=800, height=800)
-    board = Board('4k3/8/8/8/4R3/8/8/4K3 w - - 0 1')
+    board = Board('4k3/8/8/8/4R3/8/8/4K3 w - - 0 1',tk)
     board.render(can)
     can.pack()
     board.render_bitboard(can, board.wrook)
@@ -220,10 +291,13 @@ def main():
     tk.mainloop()
 
 
-# b = BitArray('0b1110')
-# print([b[i] for i in range(len(b))])
-# a = BitArray('0b1100')
-# c = a & b
-# print((a | b))
-# print(c.bin)
-main()
+b = BitArray('0b1110')
+print([b[i] for i in range(len(b))])
+a = BitArray('0b1100')
+c = a & b
+print('here',(b << 2).bin)
+c = BitArray(64)
+
+if __name__ == '__main__':
+    pass
+    # main()
