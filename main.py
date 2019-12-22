@@ -2,9 +2,54 @@ import tkinter
 from PIL import Image, ImageTk
 from bitstring import BitArray
 from textwrap import wrap
+import json
+
+with open('resources/bitboards/clear_file.json') as f:
+    d = json.load(f)
+    clear_file = {f:BitArray('0x'+h) for f,h in d.items()}
+
+with open('resources/bitboards/clear_rank.json') as f:
+    d = json.load(f)
+    clear_rank = {int(r):BitArray('0x'+h) for r,h in d.items()}
+
+with open('resources/bitboards/knight_moves.json') as f:
+    d = json.load(f)
+    knight_moves = {int(k):BitArray('0x'+h) for k,h in d.items()}
+
+with open('resources/bitboards/mask_file.json') as f:
+    d = json.load(f)
+    mask_file = {f:BitArray('0x'+h) for f,h in d.items()}
+
+with open('resources/bitboards/mask_rank.json') as f:
+    d = json.load(f)
+    mask_rank = {int(r):BitArray('0x'+h) for r,h in d.items()}
+
+with open('resources/bitboards/piece.json') as f:
+    d = json.load(f)
+    piece = {int(f):BitArray('0x'+h) for f,h in d.items()}
+
+with open('resources/bitboards/king_moves.json') as f:
+    d = json.load(f)
+    king_moves = {int(f):BitArray('0x'+h) for f,h in d.items()}
 
 def print_bitboard(b): # print a particular bitboard for debugging purposes
     print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin, 8)]))
+
+def compute_king(king_loc):
+    king_clip_h = king_loc & clear_file['h']
+    king_clip_a = king_loc & clear_file['a']
+
+    spot_1 = king_clip_a << 9
+    spot_2 = king_loc << 8
+    spot_3 = king_clip_h << 7
+    spot_4 = king_clip_h >> 1
+
+    spot_5 = king_clip_h >> 9
+    spot_6 = king_loc >> 8
+    spot_7 = king_clip_a >> 7
+    spot_8 = king_clip_a << 1
+
+    return spot_1 | spot_2 | spot_3 | spot_4 | spot_5 | spot_6 | spot_7 | spot_8
 
 def compute_knight(knight_loc):
     """
@@ -37,38 +82,6 @@ def compute_knight(knight_loc):
     spot_8 = (knight_loc & spot_8_clip) >> 6
 
     return spot_1 | spot_2 | spot_3 | spot_4 | spot_5 | spot_6 | spot_7 | spot_8
-
-
-mask_rank = {1:BitArray('0x00000000000000FF'),
-            2:BitArray('0x000000000000FF00'),
-            3:BitArray('0x0000000000FF0000'),
-            4:BitArray('0x00000000FF000000'),
-            5:BitArray('0x000000FF00000000'),
-            6:BitArray('0x0000FF0000000000'),
-            7:BitArray('0x00FF000000000000'),
-            8:BitArray('0xFF00000000000000')}
-clear_rank = {rank:~bitboard for rank,bitboard in mask_rank.items()}
-
-mask_file={'a':BitArray('0x8080808080808080'),
-        'b':BitArray('0x4040404040404040'),
-        'c':BitArray('0x2020202020202020'),
-        'd':BitArray('0x1010101010101010'),
-        'e':BitArray('0x0808080808080808'),
-        'f':BitArray('0x0404040404040404'),
-        'g':BitArray('0x0202020202020202'),
-        'h':BitArray('0x0101010101010101')}
-
-clear_file = {f:~bitboard for f,bitboard in mask_file.items()}
-    
-p = BitArray('0x0000000000000001')
-piece = {0:p}
-for i in range(8):
-    for j in range(8):
-        if (8*i + j) not in piece: 
-            p = p << 1
-            piece[8*i+j] = p
-
-knight_moves = {i:compute_knight(knight) for i,knight in piece.items()}
 
 class Board:
     def __init__(self, fen=None,tk=None):
@@ -291,12 +304,12 @@ def main():
     tk.mainloop()
 
 
-b = BitArray('0b1110')
-print([b[i] for i in range(len(b))])
-a = BitArray('0b1100')
-c = a & b
-print('here',(b << 2).bin)
-c = BitArray(64)
+# b = BitArray('0b1110')
+# print([b[i] for i in range(len(b))])
+# a = BitArray('0b1100')
+# c = a & b
+# print('here',(b << 2).bin)
+# c = BitArray(64)
 
 if __name__ == '__main__':
     pass
