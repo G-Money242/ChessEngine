@@ -32,8 +32,14 @@ with open('resources/bitboards/king_moves.json') as f:
     d = json.load(f)
     king_moves = {int(f):BitArray('0x'+h) for f,h in d.items()}
 
+with open('resources/bitboards/rays.json') as f:
+    d = json.load(f)
+    rays = {}
+    for key,sub_d in d.items():
+        rays[key] = {i: BitArray('0x'+j) for i,j in sub_d.items()}
+
 def print_bitboard(b): # print a particular bitboard for debugging purposes
-    print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin, 8)]))
+    print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin.replace('0','.'), 8)]))
 
 def compute_king(king_loc):
     king_clip_h = king_loc & clear_file['h']
@@ -82,6 +88,11 @@ def compute_knight(knight_loc):
     spot_8 = (knight_loc & spot_8_clip) >> 6
 
     return spot_1 | spot_2 | spot_3 | spot_4 | spot_5 | spot_6 | spot_7 | spot_8
+
+for k,b in rays['NE'].items():
+    print(k)
+    print_bitboard(b)
+
 
 class Board:
     def __init__(self, fen=None,tk=None):
