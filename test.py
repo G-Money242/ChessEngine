@@ -1,11 +1,11 @@
 import os
 import unittest
-import main
+import board
 
 
 class TestLegality(unittest.TestCase):
     def white_pawn_attack(self):
-        board = main.Board('4k3/8/8/8/8/2P5/PP1P1PPP/4K3 w - - 0 1')
+        board = board.Board('4k3/8/8/8/8/2P5/PP1P1PPP/4K3 w - - 0 1')
         res = board.get_pawn_attacks('w')
         self.assertEqual(res.int,1357840384) # white attack squares
 
