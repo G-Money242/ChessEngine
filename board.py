@@ -158,38 +158,59 @@ class Board:
 
         attacks |= rays['NW'][square]
         if rays['NW'][square] & blockers:
-            blockerIndex = 0
-
-#   // North West
-#   attacks |= RAYS[NORTH_WEST][square];
-#   if (RAYS[NORTH_WEST][square] & blockers) {
-#     int blockerIndex = bitscanForward(RAYS[NORTH_WEST][square] & blockers);
-#     attacks &= ~RAYS[NORTH_WEST][blockerIndex];
-#   }
-
-#   // North East
-#   attacks |= RAYS[NORTH_EAST][square];
-#   if (RAYS[NORTH_EAST][square] & blockers) {
-#     int blockerIndex = bitscanForward(RAYS[NORTH_EAST][square] & blockers);
-#     attacks &= ~RAYS[NORTH_EAST][blockerIndex];
-#   }
-
-#   // South East
-#   attacks |= RAYS[SOUTH_EAST][square];
-#   if (RAYS[SOUTH_EAST][square] & blockers) {
-#     int blockerIndex = bitscanReverse(RAYS[SOUTH_EAST][square] & blockers);
-#     attacks &= ~RAYS[SOUTH_EAST][blockerIndex];
-#   }
-
-#   // South West
-#   attacks |= RAYS[SOUTH_WEST][square];
-#   if (RAYS[SOUTH_WEST][square] & blockers) {
-#     int blockerIndex = bitscanReverse(RAYS[SOUTH_WEST][square] & blockers);
-#     attacks &= ~RAYS[SOUTH_WEST][blockerIndex];
-#   }
-
-#   return attacks;
+            blockerIndex = bitscan_forward(rays['NW'][square] & blockers)
+            attacks &= ~rays['NW'][blockerIndex]
         
+        attacks |= rays['NE'][square]
+        if rays['NE'][square] & blockers:
+            blockerIndex = bitscan_forward(rays['NE'][square] & blockers)
+            attacks &= ~rays['NE'][blockerIndex]
+        
+        attacks |= rays['SE'][square]
+        if rays['SE'][square] & blockers:
+            blockerIndex = bitscan_reverse(rays['SE'][square] & blockers)
+            attacks &= ~rays['SE'][blockerIndex]
+        
+        attacks |= rays['SW'][square]
+        if rays['SW'][square] & blockers:
+            blockerIndex = bitscan_reverse(rays['SW'][square] & blockers)
+            attacks &= ~rays['SW'][blockerIndex]
+        
+        return attacks
+
+    def get_rook_moves(self, square, blockers):
+        attacks = BitArray('0x0000000000000000')
+
+        attacks |= rays['N'][square]
+        if rays['N'][square] & blockers:
+            blockerIndex = bitscan_forward(rays['N'][square] & blockers)
+            attacks &= ~rays['N'][blockerIndex]
+
+        attacks |= rays['W'][square]
+        if rays['W'][square] & blockers:
+            blockerIndex = bitscan_forward(rays['W'][square] & blockers)
+            attacks &= ~rays['W'][blockerIndex]
+        
+        attacks |= rays['E'][square]
+        if rays['E'][square] & blockers:
+            blockerIndex = bitscan_reverse(rays['E'][square] & blockers)
+            attacks &= ~rays['E'][blockerIndex]
+
+        attacks |= rays['S'][square]
+        if rays['S'][square] & blockers:
+            blockerIndex = bitscan_reverse(rays['S'][square] & blockers)
+            attacks &= ~rays['S'][blockerIndex]
+        
+        return attacks
+
+    def get_queen_moves(self, square, blockers):
+        return self.get_bishop_moves(square,blockers)  | self.get_rook_moves(square,blockers)
+
+def bitscan_forward(bs): # start at h1 and scan toward a8
+    return 63 - bs.rfind('0b1')[0]
+
+def bitscan_reverse(bs): # start at a8 and scan toward h1
+    return 63 - bs.find('0b1')[0]
 
 def print_bitboard(b): # print a particular bitboard for debugging purposes
     print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin.replace('0','.'), 8)]))
@@ -251,6 +272,14 @@ class IllegalMove(Error):
 
 
 if __name__ == '__main__':
-    k = rays['NE'][1]
-    print_bitboard(k)
-    print(k.find('0b1'))
+    k = BitArray('0x0000000000000000')
+    b = Board()
+    print_bitboard(b.get_queen_moves(0,k))
+    # k = rays['NE'][2]
+    
+    # print_bitboard(k)
+    # print(63 - k.find('0b1')[0])
+    # if k:
+    #     print('h')
+    # if BitArray('0x01000'):
+    #     print('asdf')
