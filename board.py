@@ -102,7 +102,7 @@ class Board:
 
         self.allwhite = self.wpawn | self.wrook | self.wknight | self.wbishop | self.wqueen | self.wking
         self.allblack = self.bpawn | self.brook | self.bknight | self.bbishop | self.bqueen | self.bking
-        self.all_pieces = self.allwhite & self.allblack
+        self.all_pieces = self.allwhite | self.allblack
 
     def print_bitboard(self,b): # print a particular bitboard for debugging purposes
         print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin, 8)]))
@@ -206,11 +206,71 @@ class Board:
     def get_queen_moves(self, square, blockers):
         return self.get_bishop_moves(square,blockers)  | self.get_rook_moves(square,blockers)
 
+    def get_knight_moves(self, square, blockers):
+        return knight_moves[square] & ~blockers
+
+    def get_king_moves(self, color):
+        if color == 'w':
+            king_loc = bitscan_forward(self.wking)
+            bishop_locs = bitscan_all(self.bbishop)
+            rook_locs = bitscan_all(self.brook)
+            queen_locs = bitscan_all(self.bqueen)
+            knight_locs = bitscan_all(self.bknight)
+            pawn_attacks = self.get_pawn_attacks('b')
+            all_except_king = self.all_pieces & ~self.wking
+            opp_king_loc = bitscan_forward(self.bking)
+
+        attacks = BitArray('0x0000000000000000')
+        
+        for bishop_loc in bishop_locs:
+            attacks |= self.get_bishop_moves(bishop_loc,all_except_king)
+        for rook_loc in rook_locs:
+            attacks |= self.get_rook_moves(rook_loc,all_except_king)
+        for queen_loc in queen_locs:
+            attacks |= self.get_queen_moves(queen_loc,all_except_king)
+        for knight_loc in knight_locs:
+            attacks |= self.get_knight_moves(knight,all_except_king)
+        
+        attacks |= king_moves[opp_king_loc] & ~all_except_king
+        attacks |= pawn_attacks
+        print_bitboard(attacks)
+
+        return king_moves[king_loc] & ~attacks
+
+
+    def king_evasions(self, color):
+        if color == 'w':
+            king_loc = self.bitscan_forward(self.wking)
+            opp_bishops = self.bbishop.copy()
+            opp_knights = self.bknight.copy()
+            opp_rooks = self.brook.copy()
+            opp_queens = self.bqueen.copy()
+        else:
+            king_loc = self.bitscan_forward(self.bking)
+            opp_bishops = self.wbishop.copy()
+            opp_knights = self.wknight.copy()
+            opp_rooks = self.wrook.copy()
+            opp_queens = self.wqueen.copy()
+        blockers = self.all_pieces.copy()
+
+        attackers = BitArray('0x0000000000000000')
+        attackers |= knight_moves[king_loc] & opp_knights
+        attackers |= self.get_bishop_moves(king_loc, blockers) & opp_bishops
+        attackers |= self.get_rook_moves(king_loc, blockers) & opp_rooks
+        attackers |= self.get_queen_moves(king_loc, blockers) & opp_queens
+
+
+
+
+
 def bitscan_forward(bs): # start at h1 and scan toward a8
     return 63 - bs.rfind('0b1')[0]
 
 def bitscan_reverse(bs): # start at a8 and scan toward h1
     return 63 - bs.find('0b1')[0]
+
+def bitscan_all(bs):
+    return [63 - x for x in bs.findall('0b1')]
 
 def print_bitboard(b): # print a particular bitboard for debugging purposes
     print('\n'.join([' '.join(wrap(line, 1)) for line in wrap(b.bin.replace('0','.'), 8)]))
@@ -272,14 +332,19 @@ class IllegalMove(Error):
 
 
 if __name__ == '__main__':
-    k = BitArray('0x0000000000000000')
-    b = Board()
-    print_bitboard(b.get_queen_moves(0,k))
+    k = BitArray('0x0000010000000000')
+    fen = '4k3/8/8/8/2b1r3/8/4K3/8 w - - 0 1'
+    b = Board(fen)
+    print()
+    print_bitboard(b.all_pieces)
+    print()
+    a = b.get_king_moves('w')
+    print_bitboard(a)
+    print(a.int)
+
+
+    # print_bitboard()
     # k = rays['NE'][2]
     
     # print_bitboard(k)
-    # print(63 - k.find('0b1')[0])
-    # if k:
-    #     print('h')
-    # if BitArray('0x01000'):
-    #     print('asdf')
+    # print([63 - x for x in k.findall('0b1')])
